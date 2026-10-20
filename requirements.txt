@@ -1,0 +1,12 @@
+# Pinned to PAVICS JupyterLab env "birdy" (Python 3.12.13), 2026-10-20
+siphon==0.10.0
+pyproj==3.7.2
+clisops==0.17.0
+numpy==2.2.6
+xarray==2025.10.1
+geopandas==1.1.3
+xclim==0.60.0
+netCDF4==1.7.2
+dask==2026.3.0
+zarr==2.18.7
+matplotlib==3.10.8

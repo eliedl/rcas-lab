@@ -2,4 +2,5 @@ output/
 .ipynb_checkpoints/
 __pycache__/
 .venv/
+.claude/
 *.nc

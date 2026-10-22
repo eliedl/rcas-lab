@@ -1,0 +1,8 @@
+{
+"type": "FeatureCollection",
+"name": "esgl_32198_bbox",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::32198" } },
+"features": [
+{ "type": "Feature", "properties": { }, "geometry": { "type": "Polygon", "coordinates": [ [ [ 1039420.0, -129851.4 ], [ 1039420.0, 952110.275998702971265 ], [ -232591.817982690554345, 952110.275998702971265 ], [ -232591.817982690554345, -129851.4 ], [ 1039420.0, -129851.4 ] ] ] } }
+]
+}

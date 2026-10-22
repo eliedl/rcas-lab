@@ -7,7 +7,7 @@ and trend maps of surface air temperature, 1990–2020. ("rcas" is a historical 
 ## Data
 The input is a ~2.8 GB NetCDF cache that is **not versioned** (`*.nc` is gitignored).
 It is built on [PAVICS](https://pavics.ouranos.ca/) by
-`exploration/02_casr_gulf_cache.ipynb`, which reads CaSR over THREDDS/OPeNDAP and
+`exploration/02_casr_egsl_cache.ipynb`, which reads CaSR over THREDDS/OPeNDAP and
 subsets it with the `egsl` mask, then downloaded locally. The expected path is set
 in `src/config.py`:
 
@@ -25,7 +25,7 @@ a companion sea-ice climatology project, as of 2026-10-21.
 **Caveat:** spatial means cover this envelope, not a Gulf coastline boundary.
 
 To rebuild the cache: upload this file to your PAVICS writable workspace (the path in
-`SHAPE_PATH`, `exploration/02_casr_gulf_cache.ipynb`), run the notebook on PAVICS, and
+`SHAPE_PATH`, `exploration/02_casr_egsl_cache.ipynb`), run the notebook on PAVICS, and
 download the output to the path in `src/config.py`.
 
 ## Setup
@@ -58,7 +58,7 @@ One module per concern, flat in `src/`. Concern modules import only `config`;
 ```
  PAVICS (outside the local runtime)
  ┌───────────────────────────────────────────────────────────────────────┐
- │ THREDDS/OPeNDAP ──► exploration/02_casr_gulf_cache.ipynb ──► .nc file │
+ │ THREDDS/OPeNDAP ──► exploration/02_casr_egsl_cache.ipynb ──► .nc file │
  └───────────────────────────────────────────────────────────────┬───────┘
                                                      download    │
  ~/data/ECCC/casr_v32_day_egsl_19900901-20200901.nc  ◄───────────┘

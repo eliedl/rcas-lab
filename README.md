@@ -2,7 +2,8 @@
 
 Exploration of the CaSR v3.2 daily reanalysis (Canadian Surface Reanalysis, ECCC)
 over the Estuary and Gulf of St. Lawrence: per-month winter (Dec–Mar) climatology
-and trend maps of surface air temperature, 1990–2020. ("rcas" is a historical name.)
+and trend maps of surface air temperature, and climatological mean 10 m wind maps,
+1990–2020. ("rcas" is a historical name.)
 
 ## Data
 The input is a ~2.8 GB NetCDF cache that is **not versioned** (`*.nc` is gitignored).
@@ -39,10 +40,13 @@ local results match the cache-building environment.
 ## Run
 From the repo root:
 
-    python main.py
+    python main.py tas
+    python main.py wind
 
-Writes `output/tas_mean.png` and `output/tas_trend.png` (trend in °C/decade;
-dotted where p ≥ `SIGNIFICANT_P_VALUE`).
+`tas` writes `output/tas_mean.png` and `output/tas_trend.png` (trend in °C/decade;
+dotted where p ≥ `SIGNIFICANT_P_VALUE`). `wind` writes `output/wind_mean.png`: the
+norm of the climatological mean wind vector (colour) and its direction (equal-length
+arrows pointing where the wind blows to). 
 
 ## Architecture
 One module per concern, flat in `src/`. Concern modules import only `config`;
@@ -52,8 +56,8 @@ One module per concern, flat in `src/`. Concern modules import only `config`;
 |---|---|
 | `config.py` | Cache path, output directory, season months, significance threshold |
 | `access.py` | Open the local cache, load with timing |
-| `climatology.py` | Daily → monthly reduction, unit conversion, season selection, per-month mean and trend; no display logic |
-| `plotting.py` | Winter ordering (Dec → Mar), facets, significance hatching |
+| `climatology.py` | Daily → monthly reduction (tas, wind components), unit conversion, season selection, per-month mean and trend, wind-vector norm; no display logic |
+| `plotting.py` | Winter ordering (Dec → Mar), facets, overlays (significance hatching, wind quiver) |
 
 ```
  PAVICS (outside the local runtime)
@@ -75,22 +79,25 @@ One module per concern, flat in `src/`. Concern modules import only `config`;
        ┌────────┴───────┐    ┌──────────┴──────────┐   ┌───────┴────────┐
        │ access.py      │    │ climatology.py      │   │ plotting.py    │
        │ open_cache     │    │ monthly_means       │   │ winter_order   │
-       │ timed_load     │    │ select_season       │   │ facet          │
-       │                │    │ trend_per_decade    │   │ _hatch         │
+       │ timed_load     │    │ monthly_wind_means  │   │ facet          │
+       │                │    │ select_season       │   │ hatch          │
+       │                │    │ climatological_mean │   │ quiver         │
        │                │    │ per_month           │   │ save           │
+       │                │    │ trend_per_decade    │   │                │
+       │                │    │ wind_norm           │   │                │
        └────────▲───────┘    └──────────▲──────────┘   └───────▲────────┘
                 │                       │                      │
                 └───────────────┬───────┴──────────────────────┘
                                 │
                      ┌──────────┴─────────────────────┐
-                     │ main.py  (entry point, tas)    │
+                     │ main.py  (entry: tas | wind)   │
                      └──────────┬─────────────────────┘
                                 ▼ writes
                      output/*.png  (gitignored) ···► docs/NOTES.md (interpretation, by hand)
 ```
 
 ### Data flow
-One run of `python main.py`:
+One run of `python main.py tas`:
 ```
 open_cache()            Dataset, daily, lazy          (access)
    │ ds["tas"]
@@ -105,6 +112,24 @@ per_month()             per-month mean + trend_per_decade (climatology)
 winter_order()          Dec → Mar labels              (plotting)
 facet()                 maps + hatching where p ≥ SIGNIFICANT_P_VALUE (plotting)
 save()                  output/tas_mean.png · output/tas_trend.png (plotting)
+```
+
+One run of `python main.py wind`:
+```
+open_cache()            Dataset, daily, lazy          (access)
+   │ ds["uas"], ds["vas"]
+timed_load()            2 DataArrays daily, m s-1     (access)
+   │
+monthly_wind_means()    monthly uas, vas              (climatology: xclim generic.stats, op="mean")
+   │                    
+select_season()         DJFM monthly                  (climatology)
+   │
+climatological_mean()   per-month mean uas, vas, month-keyed (climatology)
+   │
+wind_norm()             norm of the mean vector       (climatology: xclim wind_speed_from_vector)
+   │
+facet() + quiver()      norm map + equal-length arrows every QUIVER_STRIDE cells (plotting)
+save()                  output/wind_mean.png          (plotting)
 ```
 
 ## Repository layout

@@ -140,7 +140,8 @@ save()                  output/wind_mean.png          (plotting)
     main.py              entry point
     src/                 concern modules (above)
     data/                subset mask (small inputs only; *.nc is gitignored)
-    exploration/         frozen notebooks: record of the exploration and parity
-                         reference for the scripts (02 is the live cache builder)
+    exploration/         frozen notebooks: record of the exploration (01: parity
+                         reference for the scripts; 02: live cache builder;
+                         03: evidence for rotating wind arrows onto the grid axes)
     docs/NOTES.md        interpretation of the outputs
     docs/READING_LOG.md  literature

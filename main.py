@@ -10,7 +10,7 @@ def main():
     plotting.save(plotting.facet(mean, "Mean monthly surface air temperature (°C)"), "tas_mean")
     plotting.save(plotting.facet(trend.slope,
                                  f"Trend (°C / decade), dotted: p ≥ {config.SIGNIFICANT_P_VALUE}",
-                                 hatch_mask=trend.p >= config.SIGNIFICANT_P_VALUE),
+                                 overlays=[(plotting.hatch, trend.p >= config.SIGNIFICANT_P_VALUE)]),
                   "tas_trend")
 
 

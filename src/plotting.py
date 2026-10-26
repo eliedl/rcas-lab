@@ -16,24 +16,23 @@ def winter_order(da: xr.DataArray) -> xr.DataArray:
               .assign_coords(month=[calendar.month_abbr[m] for m in config.SEASON_MONTHS]))
 
 
-def _hatch(ax, mask):
+def hatch(ax, mask):
+    """Overlay: hatch the cells where mask is True."""
     ydim, xdim = mask.dims                      # same (y, x) order xarray uses for the facet
+    # the single band [0.5, 1.5] of the 0/1 mask holds exactly the True cells; fill is transparent
     ax.contourf(mask[xdim], mask[ydim], mask.astype(float),
                 levels=[0.5, 1.5], colors="none", hatches=[NOT_SIGNIFICANT_HATCH])
 
 
-def facet(da, label, hatch_mask=None, **plot_kw):
-    """One map per month in season order, optionally hatched where hatch_mask is True."""
-    da = winter_order(da)
-    if hatch_mask is not None:
-        hatch_mask = winter_order(hatch_mask)
+def facet(da, label, overlays=(), **plot_kw):
+    """One map per month in season order, with (draw, month-keyed data) overlays drawn on each map."""
     kw = dict(cmap="RdBu_r", center=0, robust=True) | plot_kw
-    fg = da.plot(col="month", col_wrap=2, cbar_kwargs={"label": label}, **kw)
+    fg = winter_order(da).plot(col="month", col_wrap=2, cbar_kwargs={"label": label}, **kw)
     fg.set_titles("{value}")
-    for ax, sel in zip(fg.axs.flat, fg.name_dicts.flat):
+    for ax, month in zip(fg.axs.flat, config.SEASON_MONTHS):    # facets are in season order
         ax.set_aspect("equal")
-        if hatch_mask is not None and sel is not None:
-            _hatch(ax, hatch_mask.sel(sel))
+        for draw, data in overlays:
+            draw(ax, data.sel(month=month))
     return fg
 
 

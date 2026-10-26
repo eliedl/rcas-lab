@@ -7,7 +7,7 @@ from src import config
 
 
 def open_cache(path=config.CACHE_PATH) -> xr.Dataset:
-    """Open the local CaSR Gulf cache lazily."""
+    """Open the local CaSR cache lazily."""
     return xr.open_dataset(path)
 
 

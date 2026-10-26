@@ -23,9 +23,10 @@ def _wind(ds):
     uas, vas = (climatology.climatological_mean(climatology.select_season(monthly))
                 for monthly in climatology.monthly_wind_means(*daily))
 
-    plotting.save(plotting.facet(climatology.wind_norm(uas, vas),
-                                 "Norm of the mean 10 m wind vector (m s⁻¹)",
-                                 overlays=[(plotting.quiver, xr.Dataset({"uas": uas, "vas": vas}))],
+    norm = climatology.wind_norm(uas, vas)
+    plotting.save(plotting.facet(norm, "Norm of the mean 10 m wind vector (m s⁻¹)",
+                                 overlays=[(plotting.graticule, norm),
+                                           (plotting.quiver, xr.Dataset({"uas": uas, "vas": vas}))],
                                  cmap="viridis", center=False, vmin=0),
                   "wind_mean")
 

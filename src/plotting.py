@@ -12,6 +12,9 @@ FIGURE_DPI = 150
 QUIVER_STRIDE = 8          # grid cells between arrows, along each axis
 ARROW_FILL = 0.8           # arrow length as a fraction of the arrow spacing: arrows never overlap
 ARROW_COLOR = "white"
+GRATICULE_STEP = 2         # degrees between meridians, and between parallels
+GRATICULE_STYLE = dict(colors="black", alpha=0.5, linewidths=0.6,
+                       negative_linestyles="solid")    # contour dashes negative levels (western longitudes)
 
 
 def winter_order(da: xr.DataArray) -> xr.DataArray:
@@ -28,10 +31,34 @@ def hatch(ax, mask):
                 levels=[0.5, 1.5], colors="none", hatches=[NOT_SIGNIFICANT_HATCH])
 
 
+def _grid_angle(wind):
+    """Local bearing of the grid's +rlat axis, clockwise from true north, in radians."""
+    ydim, _ = wind.uas.dims
+    return np.arctan2(wind.lon.differentiate(ydim) * np.cos(np.deg2rad(wind.lat)),
+                      wind.lat.differentiate(ydim))
+
+
+def _to_grid_frame(wind):
+    """Rotate eastward/northward components onto the grid axes the maps are drawn in."""
+    alpha = _grid_angle(wind)
+    return wind.assign(uas=wind.uas * np.cos(alpha) - wind.vas * np.sin(alpha),
+                       vas=wind.vas * np.cos(alpha) + wind.uas * np.sin(alpha))
+
+
+def graticule(ax, da):
+    """Overlay: meridians and parallels every GRATICULE_STEP degrees, from the 2D lat/lon coordinates."""
+    ydim, xdim = da.dims
+    for coord in (da.lon, da.lat):
+        first, last = float(np.floor(coord.min() / GRATICULE_STEP)), float(np.ceil(coord.max() / GRATICULE_STEP))
+        ax.contour(da[xdim], da[ydim], coord,
+                   levels=np.arange(first, last + 1) * GRATICULE_STEP, **GRATICULE_STYLE)
+
+
 def quiver(ax, wind):
     """Overlay: equal-length arrows pointing where the wind blows to, from a (uas, vas) Dataset."""
     ydim, xdim = wind.uas.dims
-    sub = wind.isel({ydim: slice(None, None, QUIVER_STRIDE), xdim: slice(None, None, QUIVER_STRIDE)})
+    sub = _to_grid_frame(wind).isel({ydim: slice(None, None, QUIVER_STRIDE),
+                                     xdim: slice(None, None, QUIVER_STRIDE)})
     norm = np.hypot(sub.uas, sub.vas)
     spacing = abs(float(sub[xdim][1] - sub[xdim][0]))
     ax.quiver(sub[xdim], sub[ydim], sub.uas / norm, sub.vas / norm, color=ARROW_COLOR,

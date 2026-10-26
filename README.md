@@ -57,7 +57,7 @@ One module per concern, flat in `src/`. Concern modules import only `config`;
 | `config.py` | Cache path, output directory, season months, significance threshold |
 | `access.py` | Open the local cache, load with timing |
 | `climatology.py` | Daily → monthly reduction (tas, wind components), unit conversion, season selection, per-month mean and trend, wind-vector norm; no display logic |
-| `plotting.py` | Winter ordering (Dec → Mar), facets, overlays (significance hatching, wind quiver) |
+| `plotting.py` | Winter ordering (Dec → Mar), facets, overlays (significance hatching, graticule, wind quiver rotated onto the grid axes) |
 
 ```
  PAVICS (outside the local runtime)
@@ -81,9 +81,9 @@ One module per concern, flat in `src/`. Concern modules import only `config`;
        │ open_cache     │    │ monthly_means       │   │ winter_order   │
        │ timed_load     │    │ monthly_wind_means  │   │ facet          │
        │                │    │ select_season       │   │ hatch          │
-       │                │    │ climatological_mean │   │ quiver         │
-       │                │    │ per_month           │   │ save           │
-       │                │    │ trend_per_decade    │   │                │
+       │                │    │ climatological_mean │   │ graticule      │
+       │                │    │ per_month           │   │ quiver         │
+       │                │    │ trend_per_decade    │   │ save           │
        │                │    │ wind_norm           │   │                │
        └────────▲───────┘    └──────────▲──────────┘   └───────▲────────┘
                 │                       │                      │
@@ -128,7 +128,11 @@ climatological_mean()   per-month mean uas, vas, month-keyed (climatology)
    │
 wind_norm()             norm of the mean vector       (climatology: xclim wind_speed_from_vector)
    │
-facet() + quiver()      norm map + equal-length arrows every QUIVER_STRIDE cells (plotting)
+facet()                 norm map on the rlon/rlat axes (plotting)
+graticule()             meridians and parallels from the 2D lat/lon (plotting)
+quiver()                uas, vas rotated by the local grid angle (17–32° over egsl) onto the
+   │                    rlon/rlat axes, equal-length arrows
+   │                    
 save()                  output/wind_mean.png          (plotting)
 ```
 

@@ -1,13 +1,17 @@
-"""Plotting: month-faceted maps in season order, significance hatching, figure output."""
+"""Plotting: month-faceted maps in season order, hatching and wind overlays, figure output."""
 import calendar
 
 import matplotlib.pyplot as plt
+import numpy as np
 import xarray as xr
 
 from src import config
 
 NOT_SIGNIFICANT_HATCH = "..."
 FIGURE_DPI = 150
+QUIVER_STRIDE = 8          # grid cells between arrows, along each axis
+ARROW_FILL = 0.8           # arrow length as a fraction of the arrow spacing: arrows never overlap
+ARROW_COLOR = "white"
 
 
 def winter_order(da: xr.DataArray) -> xr.DataArray:
@@ -22,6 +26,16 @@ def hatch(ax, mask):
     # the single band [0.5, 1.5] of the 0/1 mask holds exactly the True cells; fill is transparent
     ax.contourf(mask[xdim], mask[ydim], mask.astype(float),
                 levels=[0.5, 1.5], colors="none", hatches=[NOT_SIGNIFICANT_HATCH])
+
+
+def quiver(ax, wind):
+    """Overlay: equal-length arrows pointing where the wind blows to, from a (uas, vas) Dataset."""
+    ydim, xdim = wind.uas.dims
+    sub = wind.isel({ydim: slice(None, None, QUIVER_STRIDE), xdim: slice(None, None, QUIVER_STRIDE)})
+    norm = np.hypot(sub.uas, sub.vas)
+    spacing = abs(float(sub[xdim][1] - sub[xdim][0]))
+    ax.quiver(sub[xdim], sub[ydim], sub.uas / norm, sub.vas / norm, color=ARROW_COLOR,
+              angles="xy", scale_units="xy", scale=1 / (ARROW_FILL * spacing), pivot="middle")
 
 
 def facet(da, label, overlays=(), **plot_kw):

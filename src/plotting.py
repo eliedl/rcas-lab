@@ -13,7 +13,7 @@ QUIVER_STRIDE = 8          # grid cells between arrows, along each axis
 ARROW_FILL = 0.8           # arrow length as a fraction of the arrow spacing: arrows never overlap
 ARROW_COLOR = "white"
 GRATICULE_STEP = 2         # degrees between meridians, and between parallels
-GRATICULE_STYLE = dict(colors="black", alpha=0.5, linewidths=0.6,
+GRATICULE_STYLE = dict(colors="black", alpha=0.35, linewidths=0.6,
                        negative_linestyles="solid")    # contour dashes negative levels (western longitudes)
 
 

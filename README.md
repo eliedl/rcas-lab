@@ -3,7 +3,8 @@
 Exploration of the CaSR v3.2 daily reanalysis (Canadian Surface Reanalysis, ECCC)
 over the Estuary and Gulf of St. Lawrence: per-month winter (Dec–Mar) climatology
 and trend maps of surface air temperature, and climatological mean 10 m wind maps,
-1990–2020. ("rcas" is a historical name.)
+1990–2020. The same climatology and trend maps are produced for CIS sea-ice
+concentration, rasterized onto the CaSR grid.
 
 ## Data
 The input is a ~2.8 GB NetCDF cache that is **not versioned** (`*.nc` is gitignored).
@@ -29,6 +30,24 @@ To rebuild the cache: upload this file to your PAVICS writable workspace (the pa
 `SHAPE_PATH`, `exploration/02_casr_egsl_cache.ipynb`), run the notebook on PAVICS, and
 download the output to the path in `src/config.py`.
 
+### Sea-ice input
+`ice` reads a second file, also not versioned (`ICE_PATH` in `src/config.py`):
+
+    ~/data/CIS/gridded/sgrdr_ct_casr-egsl_19900901-20200901.nc
+
+It holds CIS weekly regional-chart (SGRDR) total concentration `ct` (open water = 0) on
+this cache's rotated-pole grid, exported by the companion sea-ice project. Lineage and
+the meanings of NaN: `~/data/CIS/gridded/README.md`.
+
+The charts are weekly with 7- and 8-day steps, so xclim's missing-value check cannot
+run: it needs a regular source step that divides the month. Instead, the ice analysis
+only (not `tas` or `wind`) is gated on the charts actually present:
+- **within a month:** a cell's monthly value is NaN if fewer than 50%
+  of the month's charts have a value;
+- **across years:** a cell-month's mean and trend are NaN if fewer than
+  50% of the years have a monthly value.
+
+
 ## Setup
 Python 3.12 (`.python-version`).
 
@@ -42,11 +61,15 @@ From the repo root:
 
     python main.py tas
     python main.py wind
+    python main.py ice
 
 `tas` writes `output/tas_mean.png` and `output/tas_trend.png` (trend in °C/decade;
 dotted where p ≥ `SIGNIFICANT_P_VALUE`). `wind` writes `output/wind_mean.png`: the
 norm of the climatological mean wind vector (colour) and its direction (equal-length
-arrows pointing where the wind blows to). 
+arrows pointing where the wind blows to). `ice` writes `output/ice_mean.png` and
+`output/ice_trend.png` (dotted the same way as `tas`). Cells that are 0 in every
+year have p = NaN, so they are not dotted even though their trend is not
+significant.
 
 ## Architecture
 One module per concern, flat in `src/`. Concern modules import only `config`;
@@ -54,9 +77,9 @@ One module per concern, flat in `src/`. Concern modules import only `config`;
 
 | Module | Concern |
 |---|---|
-| `config.py` | Cache path, output directory, season months, significance threshold |
-| `access.py` | Open the local cache, load with timing |
-| `climatology.py` | Daily → monthly reduction (tas, wind components), unit conversion, season selection, per-month mean and trend, wind-vector norm; no display logic |
+| `config.py` | Input paths (CaSR cache, CIS sea-ice grid), output directory, season months, coverage and significance thresholds |
+| `access.py` | Open a local NetCDF input, load with timing |
+| `climatology.py` | Daily/weekly → monthly reduction (tas, wind components, sea-ice concentration), unit conversion, season selection, coverage gates, per-month mean and trend, wind-vector norm; no display logic |
 | `plotting.py` | Winter ordering (Dec → Mar), facets, overlays (significance hatching, graticule, wind quiver rotated onto the grid axes) |
 
 ```
@@ -66,12 +89,15 @@ One module per concern, flat in `src/`. Concern modules import only `config`;
  └───────────────────────────────────────────────────────────────┬───────┘
                                                      download    │
  ~/data/ECCC/casr_v32_day_egsl_19900901-20200901.nc  ◄───────────┘
+ ~/data/CIS/gridded/sgrdr_ct_casr-egsl_19900901-20200901.nc  ◄─── companion sea-ice data
  ════════════════════════════════ local ════════════════════════════════
                        ┌──────────────────────────────┐
                        │ config.py                    │
-                       │ CACHE_PATH · SEASON_MONTHS   │
+                       │ CASR_PATH · ICE_PATH         │
+                       │ SEASON_MONTHS · OUTPUT_DIR   │
                        │ SIGNIFICANT_P_VALUE          │
-                       │ OUTPUT_DIR                   │
+                       │ MIN_MONTH_COVERAGE           │
+                       │ MIN_PERIOD_COVERAGE          │
                        └──────▲─────────▲─────────▲───┘
                               │         │         │
                 ┌─────────────┘         │         └────────────┐
@@ -80,17 +106,19 @@ One module per concern, flat in `src/`. Concern modules import only `config`;
        │ access.py      │    │ climatology.py      │   │ plotting.py    │
        │ open_cache     │    │ monthly_means       │   │ winter_order   │
        │ timed_load     │    │ monthly_wind_means  │   │ facet          │
-       │                │    │ select_season       │   │ hatch          │
-       │                │    │ climatological_mean │   │ graticule      │
-       │                │    │ per_month           │   │ quiver         │
-       │                │    │ trend_per_decade    │   │ save           │
+       │                │    │ monthly_ct_means    │   │ hatch          │
+       │                │    │ select_season       │   │ graticule      │
+       │                │    │ climatological_mean │   │ quiver         │
+       │                │    │ per_month           │   │ save           │
+       │                │    │ gate_period_coverage│   │                │
+       │                │    │ trend_per_decade    │   │                │
        │                │    │ wind_norm           │   │                │
        └────────▲───────┘    └──────────▲──────────┘   └───────▲────────┘
                 │                       │                      │
                 └───────────────┬───────┴──────────────────────┘
                                 │
                      ┌──────────┴─────────────────────┐
-                     │ main.py  (entry: tas | wind)   │
+                     │ main.py  (entry: tas|wind|ice) │
                      └──────────┬─────────────────────┘
                                 ▼ writes
                      output/*.png  (gitignored) ···► docs/NOTES.md (interpretation, by hand)
@@ -99,7 +127,7 @@ One module per concern, flat in `src/`. Concern modules import only `config`;
 ### Data flow
 One run of `python main.py tas`:
 ```
-open_cache()            Dataset, daily, lazy          (access)
+open_cache(CASR_PATH)   Dataset, daily, lazy          (access)
    │ ds["tas"]
 timed_load()            DataArray daily, K, loaded    (access)
    │
@@ -116,7 +144,7 @@ save()                  output/tas_mean.png · output/tas_trend.png (plotting)
 
 One run of `python main.py wind`:
 ```
-open_cache()            Dataset, daily, lazy          (access)
+open_cache(CASR_PATH)   Dataset, daily, lazy          (access)
    │ ds["uas"], ds["vas"]
 timed_load()            2 DataArrays daily, m s-1     (access)
    │
@@ -134,6 +162,25 @@ quiver()                uas, vas rotated by the local grid angle (17–32° over
    │                    rlon/rlat axes, equal-length arrows
    │                    
 save()                  output/wind_mean.png          (plotting)
+```
+
+One run of `python main.py ice`:
+```
+open_cache(ICE_PATH)    Dataset, weekly charts, lazy  (access)
+   │ ds["ct"]
+timed_load()            DataArray weekly, fraction, loaded (access)
+   │
+monthly_ct_means()      monthly, NaN under MIN_MONTH_COVERAGE of the month's charts
+   │                    (climatology: generic.stats, xclim missing check skipped)
+select_season()         DJFM monthly                  (climatology)
+   │
+per_month()             per-month mean + trend_per_decade (climatology)
+   │
+gate_period_coverage()  mean and trend NaN under MIN_PERIOD_COVERAGE of the years (climatology)
+   │
+winter_order()          Dec → Mar labels              (plotting)
+facet()                 maps + hatching where p ≥ SIGNIFICANT_P_VALUE (plotting)
+save()                  output/ice_mean.png · output/ice_trend.png (plotting)
 ```
 
 ## Repository layout

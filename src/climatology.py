@@ -3,6 +3,7 @@ import operator
 
 import numpy as np
 import xarray as xr
+import xclim
 from scipy import stats
 from xclim import atmos
 from xclim.core.units import convert_units_to
@@ -23,6 +24,14 @@ def monthly_wind_means(uas: xr.DataArray, vas: xr.DataArray) -> tuple[xr.DataArr
     """Monthly means of the eastward and northward wind components from continuous daily series."""
     # components are averaged before any conversion: the mean of speeds is not the norm of the mean vector
     return tuple(generic.stats(da, op="mean", freq=MONTH_START).rename(da.name) for da in (uas, vas))
+
+
+def monthly_ct_means(ct: xr.DataArray) -> xr.DataArray:
+    """Monthly mean sea-ice concentration from weekly charts; NaN under MIN_MONTH_COVERAGE."""
+    # counts the charts actually present: xclim's missing check needs a regular timestep, cis sgrdr chart do not
+    covered = ct.notnull().resample(time=MONTH_START).mean() >= config.MIN_MONTH_COVERAGE
+    with xclim.set_options(check_missing="skip"):
+        return generic.stats(ct, op="mean", freq=MONTH_START).rename(ct.name).where(covered)
 
 
 def wind_norm(uas: xr.DataArray, vas: xr.DataArray) -> xr.DataArray:
@@ -58,3 +67,10 @@ def climatological_mean(season: xr.DataArray) -> xr.DataArray:
 def per_month(season: xr.DataArray) -> tuple[xr.DataArray, xr.Dataset]:
     """Per-month climatological mean and trend, keyed by month in groupby order."""
     return climatological_mean(season), season.groupby("time.month").map(trend_per_decade)
+
+
+def gate_period_coverage(stat, season: xr.DataArray):
+    """Blank the cell-months of a per-month statistic where under MIN_PERIOD_COVERAGE of the years have a value."""
+    # one value per year in each month group: the mean of notnull is the fraction of years covered
+    covered = season.notnull().groupby("time.month").mean() >= config.MIN_PERIOD_COVERAGE
+    return stat.where(covered)

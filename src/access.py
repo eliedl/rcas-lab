@@ -1,13 +1,11 @@
-"""Data access: open the local CaSR cache and load it with telemetry."""
+"""Data access: open the local NetCDF inputs and load them with telemetry."""
 import time
 
 import xarray as xr
 
-from src import config
 
-
-def open_cache(path=config.CACHE_PATH) -> xr.Dataset:
-    """Open the local CaSR cache lazily."""
+def open_cache(path) -> xr.Dataset:
+    """Open a local NetCDF input lazily."""
     return xr.open_dataset(path)
 
 

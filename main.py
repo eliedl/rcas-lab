@@ -1,4 +1,4 @@
-"""Entry point: per-month winter climatology maps of CaSR air temperature or surface wind."""
+"""Entry point: per-month winter climatology maps of CaSR air temperature, surface wind or CIS sea-ice concentration."""
 import argparse
 
 import xarray as xr
@@ -31,13 +31,30 @@ def _wind(ds):
                   "wind_mean")
 
 
-ANALYSES = {"tas": _tas, "wind": _wind}
+def _ice(ds):
+    weekly = access.timed_load(ds["ct"], "ct · weekly")
+    season = climatology.select_season(climatology.monthly_ct_means(weekly))
+    mean, trend = (climatology.gate_period_coverage(stat, season) for stat in climatology.per_month(season))
+
+    plotting.save(plotting.facet(mean, "Mean monthly sea-ice concentration (fraction)",
+                                 cmap="viridis", center=False, vmin=0, vmax=1),
+                  "ice_mean")
+    plotting.save(plotting.facet(trend.slope,
+                                 f"Trend (fraction / decade), dotted: p ≥ {config.SIGNIFICANT_P_VALUE}",
+                                 overlays=[(plotting.hatch, trend.p >= config.SIGNIFICANT_P_VALUE)]),
+                  "ice_trend")
+
+
+ANALYSES = {"tas": (_tas, config.CASR_PATH),
+            "wind": (_wind, config.CASR_PATH),
+            "ice": (_ice, config.ICE_PATH)}
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("analysis", choices=ANALYSES)
-    ANALYSES[parser.parse_args().analysis](access.open_cache())
+    run, path = ANALYSES[parser.parse_args().analysis]
+    run(access.open_cache(path))
 
 
 if __name__ == "__main__":

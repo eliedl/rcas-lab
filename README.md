@@ -47,6 +47,9 @@ only (not `tas` or `wind`) is gated on the charts actually present:
 - **across years:** a cell-month's mean and trend are NaN if fewer than
   50% of the years have a monthly value.
 
+In DJFM both gates act almost only on a band along the southern edge (about
+42.7–43.5°N), where the SGRDR chart's southern limit changes between eras.
+
 
 ## Setup
 Python 3.12 (`.python-version`).

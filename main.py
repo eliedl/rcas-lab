@@ -20,8 +20,9 @@ def _tas(ds):
 
 def _wind(ds):
     daily = [access.timed_load(ds[var], f"{var} · daily") for var in ("uas", "vas")]
-    uas, vas = (climatology.climatological_mean(climatology.select_season(monthly))
-                for monthly in climatology.monthly_wind_means(*daily))
+    # components are averaged before any conversion: the mean of speeds is not the norm of the mean vector
+    uas, vas = (climatology.climatological_mean(climatology.select_season(climatology.monthly_means(da)))
+                for da in daily)
 
     norm = climatology.wind_norm(uas, vas)
     plotting.save(plotting.facet(norm, "Norm of the mean 10 m wind vector (m s⁻¹)",
@@ -33,7 +34,7 @@ def _wind(ds):
 
 def _ice(ds):
     weekly = access.timed_load(ds["ct"], "ct · weekly")
-    season = climatology.select_season(climatology.monthly_ct_means(weekly))
+    season = climatology.select_season(climatology.monthly_means(weekly))
     mean, trend = (climatology.gate_period_coverage(stat, season) for stat in climatology.per_month(season))
 
     plotting.save(plotting.facet(mean, "Mean monthly sea-ice concentration (%)",

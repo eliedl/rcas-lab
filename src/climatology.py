@@ -1,11 +1,11 @@
 """Climatological reductions: monthly indicators, season selection, per-month mean and trend."""
 import operator
+from dataclasses import dataclass
 
 import numpy as np
 import xarray as xr
 import xclim
 from scipy import stats
-from xclim import atmos
 from xclim.core.units import convert_units_to
 from xclim.indicators import convert, generic
 
@@ -15,23 +15,33 @@ MONTH_START = "MS"
 YEARS_PER_DECADE = 10
 
 
-def monthly_means(tas: xr.DataArray) -> xr.DataArray:
-    """Monthly mean air temperature in °C from a continuous daily series."""
-    return atmos.tg_mean(tas, freq=MONTH_START).pipe(convert_units_to, "degC")
+@dataclass(frozen=True)
+class MonthlyMean:
+    """How a variable's monthly mean is reduced: output units and, for irregular series, a coverage gate."""
+    units: str | None = None            # None keeps the source units
+    min_coverage: float | None = None   # None leaves the missing check to xclim
 
 
-def monthly_wind_means(uas: xr.DataArray, vas: xr.DataArray) -> tuple[xr.DataArray, xr.DataArray]:
-    """Monthly means of the eastward and northward wind components from continuous daily series."""
-    # components are averaged before any conversion: the mean of speeds is not the norm of the mean vector
-    return tuple(generic.stats(da, op="mean", freq=MONTH_START) for da in (uas, vas))
+MONTHLY_MEANS = {"tas": MonthlyMean(units="degC"),
+                 "uas": MonthlyMean(),
+                 "vas": MonthlyMean(),
+                 "ct": MonthlyMean(units="%", min_coverage=config.MIN_MONTH_COVERAGE)}
 
 
-def monthly_ct_means(ct: xr.DataArray) -> xr.DataArray:
-    """Monthly mean sea-ice concentration in % from weekly charts; NaN under MIN_MONTH_COVERAGE."""
-    # counts the charts actually present: xclim's missing check needs a regular timestep, cis sgrdr chart do not
-    covered = ct.notnull().resample(time=MONTH_START).mean() >= config.MIN_MONTH_COVERAGE
+def monthly_means(da: xr.DataArray) -> xr.DataArray:
+    """Monthly mean of a variable, reduced as its MONTHLY_MEANS row specifies."""
+    spec = MONTHLY_MEANS[da.name]
+    mean = (generic.stats(da, op="mean", freq=MONTH_START) if spec.min_coverage is None
+            else _gated_mean(da, spec.min_coverage))
+    return mean if spec.units is None else convert_units_to(mean, spec.units)
+
+
+def _gated_mean(da: xr.DataArray, min_coverage: float) -> xr.DataArray:
+    """Monthly mean of an irregular series, NaN where under min_coverage of its timesteps are present."""
+    # counts the timesteps actually present: xclim's missing check needs a regular timestep, cis sgrdr charts do not
+    covered = da.notnull().resample(time=MONTH_START).mean() >= min_coverage
     with xclim.set_options(check_missing="skip"):
-        return generic.stats(ct, op="mean", freq=MONTH_START).pipe(convert_units_to, "%").where(covered)
+        return generic.stats(da, op="mean", freq=MONTH_START).where(covered)
 
 
 def wind_norm(uas: xr.DataArray, vas: xr.DataArray) -> xr.DataArray:

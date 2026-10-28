@@ -107,9 +107,9 @@ One module per concern, flat in `src/`. Concern modules import only `config`;
                 │                       │                      │
        ┌────────┴───────┐    ┌──────────┴──────────┐   ┌───────┴────────┐
        │ access.py      │    │ climatology.py      │   │ plotting.py    │
-       │ open_cache     │    │ monthly_means       │   │ winter_order   │
-       │ timed_load     │    │ monthly_wind_means  │   │ facet          │
-       │                │    │ monthly_ct_means    │   │ hatch          │
+       │ open_cache     │    │ MonthlyMean         │   │ winter_order   │
+       │ timed_load     │    │ MONTHLY_MEANS       │   │ facet          │
+       │                │    │ monthly_means       │   │ hatch          │
        │                │    │ select_season       │   │ graticule      │
        │                │    │ climatological_mean │   │ quiver         │
        │                │    │ per_month           │   │ save           │
@@ -134,7 +134,7 @@ open_cache(CASR_PATH)   Dataset, daily, lazy          (access)
    │ ds["tas"]
 timed_load()            DataArray daily, K, loaded    (access)
    │
-monthly_means()         monthly, °C, all 12 months    (climatology: tg_mean + convert_units_to)
+monthly_means()         monthly, °C, all 12 months    (climatology: MONTHLY_MEANS["tas"])
    │
 select_season()         DJFM monthly                  (climatology: SEASON_MONTHS)
    │
@@ -151,7 +151,7 @@ open_cache(CASR_PATH)   Dataset, daily, lazy          (access)
    │ ds["uas"], ds["vas"]
 timed_load()            2 DataArrays daily, m s-1     (access)
    │
-monthly_wind_means()    monthly uas, vas              (climatology: xclim generic.stats, op="mean")
+monthly_means()         monthly uas, vas              (climatology: MONTHLY_MEANS["uas"|"vas"])
    │                    
 select_season()         DJFM monthly                  (climatology)
    │
@@ -173,8 +173,8 @@ open_cache(ICE_PATH)    Dataset, weekly charts, lazy  (access)
    │ ds["ct"]
 timed_load()            DataArray weekly, fraction, loaded (access)
    │
-monthly_ct_means()      monthly, %, NaN under MIN_MONTH_COVERAGE of the month's charts
-   │                    (climatology: generic.stats + convert_units_to, xclim missing check skipped)
+monthly_means()         monthly, %, NaN under MIN_MONTH_COVERAGE of the month's charts
+   │                    (climatology: MONTHLY_MEANS["ct"], xclim missing check skipped)
 select_season()         DJFM monthly                  (climatology)
    │
 per_month()             per-month mean + trend_per_decade (climatology)

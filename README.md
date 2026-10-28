@@ -19,10 +19,9 @@ in `src/config.py`:
 `data/egsl_32198_bbox.geojson` is the mask the cache was cut with: one axis-aligned
 rectangle in EPSG:32198 (NAD83 / Québec Lambert), bounds
 `(-232591.818, -129851.4, 1039420.0, 952110.276)` m ≈ 71.95–53.28°W, 42.03–52.54°N.
-It covers the CIS daily-chart (SGRDA) extent of the Estuary and Gulf of St. Lawrence,
-extended west to the weekly regional-chart limit, so it reaches beyond the Gulf proper
-(seaward of Cabot Strait). It is a snapshot of the canonical `egsl` envelope shared with
-a companion sea-ice climatology project, as of 2026-10-21.
+It covers the CIS daily-chart (SGRDA) extent of the Estuary and Gulf of St. Lawrence, extended west to the weekly regional-chart limit, so it reaches beyond the
+Gulf proper (seaward of Cabot Strait). The sea-ice input below is cut to the same
+rectangle, so both datasets cover the same area.
 
 **Caveat:** spatial means cover this envelope, not a Gulf coastline boundary.
 
@@ -35,9 +34,11 @@ download the output to the path in `src/config.py`.
 
     ~/data/CIS/gridded/sgrdr_ct_casr-egsl_19900901-20200901.nc
 
-It holds CIS weekly regional-chart (SGRDR) total concentration `ct` (open water = 0) on
-this cache's rotated-pole grid, exported by the companion sea-ice project. Lineage and
-the meanings of NaN: `~/data/CIS/gridded/README.md`.
+It holds total sea-ice concentration `ct` (fraction, open water = 0) from the Canadian
+Ice Service weekly regional charts (SGRDR), sampled at the cell centres of the CaSR
+rotated-pole grid. The rasterization is done upstream and is not part of this
+repository. A cell is NaN on land, and on a given chart where the chart has no data
+or does not reach the cell.
 
 The charts are weekly with 7- and 8-day steps, so xclim's missing-value check cannot
 run: it needs a regular source step that divides the month. Instead, the ice analysis
@@ -67,12 +68,12 @@ From the repo root:
     python main.py ice
 
 `tas` writes `output/tas_mean.png` and `output/tas_trend.png` (trend in °C/decade;
-dotted where p ≥ `SIGNIFICANT_P_VALUE`). `wind` writes `output/wind_mean.png`: the
-norm of the climatological mean wind vector (colour) and its direction (equal-length
-arrows pointing where the wind blows to). `ice` writes `output/ice_mean.png` and
-`output/ice_trend.png` (concentration in %, trend in %/decade; dotted the same way as `tas`). Cells that are 0 in every
-year have p = NaN, so they are not dotted even though their trend is not
-significant.
+dotted where the trend is not significant, p ≥ 0.05). `wind` writes
+`output/wind_mean.png`: the norm of the climatological mean wind vector (colour) and
+its direction (equal-length arrows pointing where the wind blows to). `ice` writes
+`output/ice_mean.png` and `output/ice_trend.png` (concentration in %, trend in
+%/decade; dotted the same way as `tas`). Cells that are 0 in every year have p = NaN,
+so they are not dotted even though their trend is not significant.
 
 ## Architecture
 One module per concern, flat in `src/`. Concern modules import only `config`;
@@ -85,6 +86,16 @@ One module per concern, flat in `src/`. Concern modules import only `config`;
 | `climatology.py` | Daily/weekly → monthly reduction (tas, wind components, sea-ice concentration), unit conversion, season selection, coverage gates, per-month mean and trend, wind-vector norm; no display logic |
 | `plotting.py` | Winter ordering (Dec → Mar), facets, overlays (significance hatching, graticule, wind quiver rotated onto the grid axes) |
 
+All variables go through one monthly-mean function, `monthly_means`. What differs
+between variables is data, not code: each variable has a row in the `MONTHLY_MEANS`
+table, so adding a variable means adding a row, not a new function and thus provides less boilerplate in the codebase.
+
+| Variable | Input | Output units | Monthly coverage gate |
+|---|---|---|---|
+| `tas` air temperature | daily, K | °C | none (xclim's missing-value check) |
+| `uas`, `vas` wind components | daily, m s⁻¹ | unchanged | none (xclim's missing-value check) |
+| `ct` sea-ice concentration | weekly, fraction | % | ≥ 50% of the month's charts |
+
 ```
  PAVICS (outside the local runtime)
  ┌───────────────────────────────────────────────────────────────────────┐
@@ -92,7 +103,7 @@ One module per concern, flat in `src/`. Concern modules import only `config`;
  └───────────────────────────────────────────────────────────────┬───────┘
                                                      download    │
  ~/data/ECCC/casr_v32_day_egsl_19900901-20200901.nc  ◄───────────┘
- ~/data/CIS/gridded/sgrdr_ct_casr-egsl_19900901-20200901.nc  ◄─── companion sea-ice data
+ ~/data/CIS/gridded/sgrdr_ct_casr-egsl_19900901-20200901.nc  ◄─── CIS charts, rasterized upstream
  ════════════════════════════════ local ════════════════════════════════
                        ┌──────────────────────────────┐
                        │ config.py                    │
@@ -136,12 +147,12 @@ timed_load()            DataArray daily, K, loaded    (access)
    │
 monthly_means()         monthly, °C, all 12 months    (climatology: MONTHLY_MEANS["tas"])
    │
-select_season()         DJFM monthly                  (climatology: SEASON_MONTHS)
+select_season()         DJFM monthly                  (climatology)
    │
 per_month()             per-month mean + trend_per_decade (climatology)
    │                    month-keyed, groupby order (1, 2, 3, 12): no display logic
 winter_order()          Dec → Mar labels              (plotting)
-facet()                 maps + hatching where p ≥ SIGNIFICANT_P_VALUE (plotting)
+facet()                 maps + hatching where p ≥ 0.05 (plotting)
 save()                  output/tas_mean.png · output/tas_trend.png (plotting)
 ```
 
@@ -161,7 +172,7 @@ wind_norm()             norm of the mean vector       (climatology: xclim wind_s
    │
 facet()                 norm map on the rlon/rlat axes (plotting)
 graticule()             meridians and parallels from the 2D lat/lon (plotting)
-quiver()                uas, vas rotated by the local grid angle (17–32° over egsl) onto the
+quiver()                uas, vas rotated by the local grid angle (17–32° over the domain) onto the
    │                    rlon/rlat axes, equal-length arrows
    │                    
 save()                  output/wind_mean.png          (plotting)
@@ -173,16 +184,16 @@ open_cache(ICE_PATH)    Dataset, weekly charts, lazy  (access)
    │ ds["ct"]
 timed_load()            DataArray weekly, fraction, loaded (access)
    │
-monthly_means()         monthly, %, NaN under MIN_MONTH_COVERAGE of the month's charts
+monthly_means()         monthly, %, NaN for a pixel if under 50% of the month's charts have values in it
    │                    (climatology: MONTHLY_MEANS["ct"], xclim missing check skipped)
 select_season()         DJFM monthly                  (climatology)
    │
 per_month()             per-month mean + trend_per_decade (climatology)
    │
-gate_period_coverage()  mean and trend NaN under MIN_PERIOD_COVERAGE of the years (climatology)
+gate_period_coverage()  mean and trend NaN under 50% of the years (climatology)
    │
 winter_order()          Dec → Mar labels              (plotting)
-facet()                 maps + hatching where p ≥ SIGNIFICANT_P_VALUE (plotting)
+facet()                 maps + hatching where p ≥ 0.05 (plotting)
 save()                  output/ice_mean.png · output/ice_trend.png (plotting)
 ```
 

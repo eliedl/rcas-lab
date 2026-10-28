@@ -6,5 +6,6 @@ ICE_PATH = Path.home() / "data" / "CIS" / "gridded" / "sgrdr_ct_casr-egsl_199009
 OUTPUT_DIR = Path(__file__).parents[1] / "output"
 SEASON_MONTHS = (12, 1, 2, 3)   # display order: winter runs Dec → Mar
 SIGNIFICANT_P_VALUE = 0.05
-MIN_MONTH_COVERAGE = 0.5    # fraction of a month's charts a cell needs a value on (ice-clim DEC-060)
-MIN_PERIOD_COVERAGE = 0.5   # fraction of the period's years a cell needs a monthly value in (MPO: 15 of 30)
+# DFO climatological selection threshold: 15 of 30
+MIN_MONTH_COVERAGE = 0.5    # fraction of a month's charts a cell needs a value on 
+MIN_PERIOD_COVERAGE = 0.5   # fraction of the period's years a cell needs a monthly value in

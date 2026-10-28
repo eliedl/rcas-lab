@@ -23,7 +23,7 @@ def monthly_means(tas: xr.DataArray) -> xr.DataArray:
 def monthly_wind_means(uas: xr.DataArray, vas: xr.DataArray) -> tuple[xr.DataArray, xr.DataArray]:
     """Monthly means of the eastward and northward wind components from continuous daily series."""
     # components are averaged before any conversion: the mean of speeds is not the norm of the mean vector
-    return tuple(generic.stats(da, op="mean", freq=MONTH_START).rename(da.name) for da in (uas, vas))
+    return tuple(generic.stats(da, op="mean", freq=MONTH_START) for da in (uas, vas))
 
 
 def monthly_ct_means(ct: xr.DataArray) -> xr.DataArray:
@@ -31,8 +31,7 @@ def monthly_ct_means(ct: xr.DataArray) -> xr.DataArray:
     # counts the charts actually present: xclim's missing check needs a regular timestep, cis sgrdr chart do not
     covered = ct.notnull().resample(time=MONTH_START).mean() >= config.MIN_MONTH_COVERAGE
     with xclim.set_options(check_missing="skip"):
-        return (generic.stats(ct, op="mean", freq=MONTH_START).pipe(convert_units_to, "%")
-                .rename(ct.name).where(covered))
+        return generic.stats(ct, op="mean", freq=MONTH_START).pipe(convert_units_to, "%").where(covered)
 
 
 def wind_norm(uas: xr.DataArray, vas: xr.DataArray) -> xr.DataArray:

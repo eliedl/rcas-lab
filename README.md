@@ -70,7 +70,7 @@ From the repo root:
 dotted where p ≥ `SIGNIFICANT_P_VALUE`). `wind` writes `output/wind_mean.png`: the
 norm of the climatological mean wind vector (colour) and its direction (equal-length
 arrows pointing where the wind blows to). `ice` writes `output/ice_mean.png` and
-`output/ice_trend.png` (dotted the same way as `tas`). Cells that are 0 in every
+`output/ice_trend.png` (concentration in %, trend in %/decade; dotted the same way as `tas`). Cells that are 0 in every
 year have p = NaN, so they are not dotted even though their trend is not
 significant.
 
@@ -173,8 +173,8 @@ open_cache(ICE_PATH)    Dataset, weekly charts, lazy  (access)
    │ ds["ct"]
 timed_load()            DataArray weekly, fraction, loaded (access)
    │
-monthly_ct_means()      monthly, NaN under MIN_MONTH_COVERAGE of the month's charts
-   │                    (climatology: generic.stats, xclim missing check skipped)
+monthly_ct_means()      monthly, %, NaN under MIN_MONTH_COVERAGE of the month's charts
+   │                    (climatology: generic.stats + convert_units_to, xclim missing check skipped)
 select_season()         DJFM monthly                  (climatology)
    │
 per_month()             per-month mean + trend_per_decade (climatology)

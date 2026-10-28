@@ -36,11 +36,11 @@ def _ice(ds):
     season = climatology.select_season(climatology.monthly_ct_means(weekly))
     mean, trend = (climatology.gate_period_coverage(stat, season) for stat in climatology.per_month(season))
 
-    plotting.save(plotting.facet(mean, "Mean monthly sea-ice concentration (fraction)",
-                                 cmap="viridis", center=False, vmin=0, vmax=1),
+    plotting.save(plotting.facet(mean, "Mean monthly sea-ice concentration (%)",
+                                 cmap="viridis", center=False, vmin=0, vmax=100),
                   "ice_mean")
     plotting.save(plotting.facet(trend.slope,
-                                 f"Trend (fraction / decade), dotted: p ≥ {config.SIGNIFICANT_P_VALUE}",
+                                 f"Trend (% / decade), dotted: p ≥ {config.SIGNIFICANT_P_VALUE}",
                                  overlays=[(plotting.hatch, trend.p >= config.SIGNIFICANT_P_VALUE)]),
                   "ice_trend")
 

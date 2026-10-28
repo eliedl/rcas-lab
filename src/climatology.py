@@ -27,11 +27,12 @@ def monthly_wind_means(uas: xr.DataArray, vas: xr.DataArray) -> tuple[xr.DataArr
 
 
 def monthly_ct_means(ct: xr.DataArray) -> xr.DataArray:
-    """Monthly mean sea-ice concentration from weekly charts; NaN under MIN_MONTH_COVERAGE."""
+    """Monthly mean sea-ice concentration in % from weekly charts; NaN under MIN_MONTH_COVERAGE."""
     # counts the charts actually present: xclim's missing check needs a regular timestep, cis sgrdr chart do not
     covered = ct.notnull().resample(time=MONTH_START).mean() >= config.MIN_MONTH_COVERAGE
     with xclim.set_options(check_missing="skip"):
-        return generic.stats(ct, op="mean", freq=MONTH_START).rename(ct.name).where(covered)
+        return (generic.stats(ct, op="mean", freq=MONTH_START).pipe(convert_units_to, "%")
+                .rename(ct.name).where(covered))
 
 
 def wind_norm(uas: xr.DataArray, vas: xr.DataArray) -> xr.DataArray:

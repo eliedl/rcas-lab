@@ -5,6 +5,7 @@ CASR_PATH = Path.home() / "data" / "ECCC" / "casr_v32_day_egsl_19900901-20200901
 ICE_PATH = Path.home() / "data" / "CIS" / "gridded" / "sgrdr_ct_casr-egsl_19900901-20200901.nc"
 OUTPUT_DIR = Path(__file__).parents[1] / "output"
 SEASON_MONTHS = (12, 1, 2, 3)   # display order: winter runs Dec → Mar
+FREEZING_THRESHOLD = "0 degC"   # a day counts when its daily mean tas is strictly above it
 SIGNIFICANT_P_VALUE = 0.05
 # DFO climatological selection threshold: 15 of 30
 MIN_MONTH_COVERAGE = 0.5    # fraction of a month's charts a cell needs a value on 

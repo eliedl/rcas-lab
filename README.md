@@ -2,7 +2,8 @@
 
 Exploration of the CaSR v3.2 daily reanalysis (Canadian Surface Reanalysis, ECCC)
 over the Estuary and Gulf of St. Lawrence: per-month winter (Dec–Mar) climatology
-and trend maps of surface air temperature, and climatological mean 10 m wind maps,
+and trend maps of surface air temperature and of the number of days with a daily mean
+temperature above 0 °C, and climatological mean 10 m wind maps,
 1990–2020. The same climatology and trend maps are produced for CIS sea-ice
 concentration, rasterized onto the CaSR grid.
 
@@ -68,7 +69,10 @@ From the repo root:
     python main.py ice
 
 `tas` writes `output/tas_mean.png` and `output/tas_trend.png` (trend in °C/decade;
-dotted where the trend is not significant, p ≥ 0.05). `wind` writes
+dotted where the trend is not significant, p ≥ 0.05), and
+`output/tas_above_freezing_mean.png` and `output/tas_above_freezing_trend.png`: the
+number of days per month with a daily mean temperature strictly above 0 °C (trend in
+days/decade, dotted the same way). `wind` writes
 `output/wind_mean.png`: the norm of the climatological mean wind vector (colour) and
 its direction (equal-length arrows pointing where the wind blows to). `ice` writes
 `output/ice_mean.png` and `output/ice_trend.png` (concentration in %, trend in
@@ -81,14 +85,16 @@ One module per concern, flat in `src/`. Concern modules import only `config`;
 
 | Module | Concern |
 |---|---|
-| `config.py` | Input paths (CaSR cache, CIS sea-ice grid), output directory, season months, coverage and significance thresholds |
+| `config.py` | Input paths (CaSR cache, CIS sea-ice grid), output directory, season months, freezing threshold, coverage and significance thresholds |
 | `access.py` | Open a local NetCDF input, load with timing |
-| `climatology.py` | Daily/weekly → monthly reduction (tas, wind components, sea-ice concentration), unit conversion, season selection, coverage gates, per-month mean and trend, wind-vector norm; no display logic |
+| `climatology.py` | Daily/weekly → monthly reduction (tas, wind components, sea-ice concentration), monthly count of days above freezing, unit conversion, season selection, coverage gates, per-month mean and trend, wind-vector norm; no display logic |
 | `plotting.py` | Winter ordering (Dec → Mar), facets, overlays (significance hatching, graticule, wind quiver rotated onto the grid axes) |
 
 All variables go through one monthly-mean function, `monthly_means`. What differs
 between variables is data, not code: each variable has a row in the `MONTHLY_MEANS`
 table, so adding a variable means adding a row, not a new function and thus provides less boilerplate in the codebase.
+The count of days above freezing is not a mean, so it is a separate reduction
+(`days_above_freezing`) and not a row of this table.
 
 | Variable | Input | Output units | Monthly coverage gate |
 |---|---|---|---|
@@ -109,6 +115,7 @@ table, so adding a variable means adding a row, not a new function and thus prov
                        │ config.py                    │
                        │ CASR_PATH · ICE_PATH         │
                        │ SEASON_MONTHS · OUTPUT_DIR   │
+                       │ FREEZING_THRESHOLD           │
                        │ SIGNIFICANT_P_VALUE          │
                        │ MIN_MONTH_COVERAGE           │
                        │ MIN_PERIOD_COVERAGE          │
@@ -127,6 +134,7 @@ table, so adding a variable means adding a row, not a new function and thus prov
        │                │    │ gate_period_coverage│   │                │
        │                │    │ trend_per_decade    │   │                │
        │                │    │ wind_norm           │   │                │
+       │                │    │ days_above_freezing │   │                │
        └────────▲───────┘    └──────────▲──────────┘   └───────▲────────┘
                 │                       │                      │
                 └───────────────┬───────┴──────────────────────┘
@@ -144,9 +152,11 @@ One run of `python main.py tas`:
 open_cache(CASR_PATH)   Dataset, daily, lazy          (access)
    │ ds["tas"]
 timed_load()            DataArray daily, K, loaded    (access)
-   │
-monthly_means()         monthly, °C, all 12 months    (climatology: MONTHLY_MEANS["tas"])
-   │
+   │                    the same daily array feeds two branches:
+   ├─ monthly_means()        monthly mean, °C, all 12 months (climatology: MONTHLY_MEANS["tas"])
+   └─ days_above_freezing()  monthly count of days with daily mean > 0 °C, in days
+   │                         (climatology: xclim tg_days_above, threshold converted to K)
+   │                    each branch then runs:
 select_season()         DJFM monthly                  (climatology)
    │
 per_month()             per-month mean + trend_per_decade (climatology)
@@ -154,6 +164,7 @@ per_month()             per-month mean + trend_per_decade (climatology)
 winter_order()          Dec → Mar labels              (plotting)
 facet()                 maps + hatching where p ≥ 0.05 (plotting)
 save()                  output/tas_mean.png · output/tas_trend.png (plotting)
+                        output/tas_above_freezing_mean.png · output/tas_above_freezing_trend.png
 ```
 
 One run of `python main.py wind`:

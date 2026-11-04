@@ -1,4 +1,4 @@
-"""Entry point: per-month winter climatology maps of CaSR air temperature, surface wind or CIS sea-ice concentration."""
+"""Entry point: per-month winter climatology maps of CaSR air temperature (mean, days above freezing), surface wind or CIS sea-ice concentration."""
 import argparse
 
 import xarray as xr
@@ -16,6 +16,18 @@ def _tas(ds):
                                  f"Trend (°C / decade), dotted: p ≥ {config.SIGNIFICANT_P_VALUE}",
                                  overlays=[(plotting.hatch, trend.p >= config.SIGNIFICANT_P_VALUE)]),
                   "tas_trend")
+
+    above = climatology.select_season(climatology.days_above_freezing(daily))
+    days_mean, days_trend = climatology.per_month(above)
+
+    plotting.save(plotting.facet(days_mean,
+                                 f"Mean number of days per month with daily mean temperature > {config.FREEZING_THRESHOLD}",
+                                 cmap="viridis", center=False, vmin=0),
+                  "tas_above_freezing_mean")
+    plotting.save(plotting.facet(days_trend.slope,
+                                 f"Trend (days / decade), dotted: p ≥ {config.SIGNIFICANT_P_VALUE}",
+                                 overlays=[(plotting.hatch, days_trend.p >= config.SIGNIFICANT_P_VALUE)]),
+                  "tas_above_freezing_trend")
 
 
 def _wind(ds):

@@ -7,7 +7,7 @@ import xarray as xr
 import xclim
 from scipy import stats
 from xclim.core.units import convert_units_to
-from xclim.indicators import convert, generic
+from xclim.indicators import atmos, convert, generic
 
 from src import config
 
@@ -47,6 +47,11 @@ def _gated_mean(da: xr.DataArray, min_coverage: float) -> xr.DataArray:
 def wind_norm(uas: xr.DataArray, vas: xr.DataArray) -> xr.DataArray:
     """Norm of the wind vector from its eastward and northward components."""
     return convert.wind_speed_from_vector(uas=uas, vas=vas)[0]
+
+
+def days_above_freezing(tas: xr.DataArray) -> xr.DataArray:
+    """Monthly count of days with daily mean temperature above FREEZING_THRESHOLD."""
+    return atmos.tg_days_above(tas=tas, thresh=config.FREEZING_THRESHOLD, op=">", freq=MONTH_START)
 
 
 def select_season(monthly: xr.DataArray) -> xr.DataArray:
